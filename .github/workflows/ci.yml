@@ -191,7 +191,7 @@ jobs:
         run: |
           PROJECT_KEY="devops-champ_${{ github.event.repository.name }}"
 
-          mvn clean verify sonar:sonar \
+          mvn clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
             -Dsonar.projectKey=${PROJECT_KEY} \
             -Dsonar.organization=devops-champ \
             -Dsonar.host.url=https://sonarcloud.io \
@@ -334,15 +334,17 @@ jobs:
           sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
           sudo chmod +x /usr/local/bin/yq
 
-      - name: Update helm/app/values.yaml tag
+      - name: Update helm/app/values.yaml tag and repository
+        env:
+          IMAGE_REPO: ${{ secrets.DOCKERHUB_USERNAME_1 }}/${{ github.event.repository.name }}
         run: |
           VALUES_FILE="helm/app/values.yaml"
           if [ -f "$VALUES_FILE" ]; then
-            yq -i '.image.tag = env(VERSION)' "$VALUES_FILE"
-            echo "Successfully updated $VALUES_FILE tag to ${VERSION}"
-          elif [ -f "helm/app/values.yaml" ]; then
-            yq -i '.image.tag = env(VERSION)' "helm/app/values.yaml"
-            echo "Successfully updated helm/app/values.yaml tag to ${VERSION}"
+            yq -i '
+              .image.repository = env(IMAGE_REPO) |
+              .image.tag = env(VERSION)
+            ' "$VALUES_FILE"
+            echo "Successfully updated $VALUES_FILE repository to ${IMAGE_REPO} and tag to ${VERSION}"
           else
             echo "Error: values.yaml not found!"
             exit 1
